@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OSINT Investigator Pro</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://unpkg.com/cytoscape@3.28.1/dist/cytoscape.min.js"></script>
+  <link href="https://cdn.jsdelivr.net/npm/daisyui@3.9.4/dist/full.css" rel="stylesheet" type="text/css" />
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    body { font-family: 'Inter', sans-serif; }
+    #cy { width: 100%; height: 400px; border: 1px solid #ddd; border-radius: 0.5rem; }
+  </style>
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+<div id="app"></div>
+
+<script type="text/babel">
+  const { useState, useEffect } = React;
+
+  // Mock Data
+  const mockCases = [
+    { id: 1, title: "John Doe Background Check", status: "In Progress", tags: ["SOCMINT", "Email"], lastUpdated: "2025-04-05" },
+    { id: 2, title: "Domain Investigation: fakecorp.io", status: "Open", tags: ["WHOIS", "Breach"], lastUpdated: "2025-04-04" }
+  ];
+
+  const App = () => {
+    const [user, setUser] = useState(null);
+    const [activeTab, setActiveTab] = useState('dashboard');
+    const [cases, setCases] = useState(mockCases);
+    const [currentCase, setCurrentCase] = useState(null);
+    const [chatMessages, setChatMessages] = useState([
+      { sender: 'bot', text: "Hello! I'm your OSINT Assistant. How can I help with your investigation today?" }
+    ]);
+    const [chatInput, setChatInput] = useState('');
+    const [graphElements, setGraphElements] = useState([]);
+
+    useEffect(() => {
+      // Simulate login
+      setTimeout(() => setUser({ name: "Analyst One", email: "analyst@osint.pro" }), 1000);
+    }, []);
+
+    useEffect(() => {
+      if (currentCase) {
+        // Simulate entity graph
+        setGraphElements([
+          { data: { id: 'john', label: 'John Doe', type: 'person' } },
+          { data: { id: 'john@email.com', label: 'john@email.com', type: 'email' } },
+          { data: { id: 'linkedin.com/in/john', label: 'LinkedIn', type: 'profile' } },
+          { data: { source: 'john', target: 'john@email.com' } },
+          { data: { source: 'john', target: 'linkedin.com/in/john' } }
+        ]);
+        setTimeout(initCytoscape, 100);
+      }
+    }, [currentCase]);
+
+    const initCytoscape = () => {
+      const cy = cytoscape({
+        container: document.getElementById('cy'),
+        elements: graphElements,
+        style: [
+          { selector: 'node', style: { 'background-color': '#0088ff', 'label': 'data(label)', 'color': '#fff', 'text-valign': 'center' } },
+          { selector: 'edge', style: { 'width': 2, 'line-color': '#ccc', 'target-arrow-color': '#ccc', 'target-arrow-shape': 'triangle' } }
+        ],
+        layout: { name: 'cose', animate: true }
+      });
+    };
+
+    const handleLogin = (e) => {
+      e.preventDefault();
+      setUser({ name: e.target.username.value, email: e.target.username.value });
+    };
+
+    const handleChatSubmit = (e) => {
+      e.preventDefault();
+      if (!chatInput.trim()) return;
+      const newMsg = { sender: 'user', text: chatInput };
+      setChatMessages(prev => [...prev, newMsg]);
+      // Simulate bot response
+      setTimeout(() => {
+        setChatMessages(prev => [...prev, { 
+          sender: 'bot', 
+          text: "I've analyzed the query. Try running a Google dork or checking breach databases next." 
+        }]);
+      }, 800);
+      setChatInput('');
+    };
+
+    const createCase = (title) => {
+      const newCase = {
+        id: cases.length + 1,
+        title,
+        status: "Open",
+        tags: [],
+        lastUpdated: new Date().toISOString().split('T')[0],
+        notes: [],
+        evidence: []
+      };
+      setCases([...cases, newCase]);
+      setCurrentCase(newCase);
+      setActiveTab('case');
+    };
+
+    if (!user) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100">
+          <div className="bg-white p-8 rounded-xl shadow-xl w-full max-w-md">
+            <h1 className="text-3xl font-bold text-center mb-6 text-indigo-700">OSINT Investigator Pro</h1>
+            <p className="text-center text-gray-600 mb-6">Secure Intelligence Platform</p>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Username</label>
+                <input type="text" name="username" required
+                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                <input type="password" name="password" required
+                       className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"/>
+              </div>
+              <div className="flex items-center">
+                <input type="checkbox" id="mfa" className="mr-2"/>
+                <label htmlFor="mfa" className="text-sm text-gray-700">Enable MFA (Simulated)</label>
+              </div>
+              <button type="submit"
+                      className="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition font-medium">
+                Sign In
+              </button>
+            </form>
+            <p className="text-xs text-center text-gray-500 mt-4">
+              Demo Mode: Any credentials work. MFA is simulated.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen flex flex-col">
+        {/* Header */}
+        <header className="bg-white shadow-sm border-b">
+          <div className="px-6 py-4 flex justify-between items-center">
+            <div className="flex items-center space-x-2">
+              <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-white" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h1 className="text-xl font-semibold text-gray-800">OSINT Investigator Pro</h1>
+            </div>
+            <div className="flex items-center space-x-4">
+              <span className="text-sm text-gray-600">Signed in as {user.name}</span>
+              <div className="w-8 h-8 bg-gray-300 rounded-full flex items-center justify-center">
+                <span className="text-xs font-medium">{user.name.split(' ').map(n => n[0]).join('')}</span>
+              </div>
+            </div>
+          </div>
+        </header>
+
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar */}
+          <nav className="w-64 bg-white border-r flex flex-col">
+            <div className="p-4 space-y-2">
+              {[
+                { id: 'dashboard', label: 'Dashboard', icon: '📊' },
+                { id: 'dorking', label: 'Search Dorking', icon: '🔍' },
+                { id: 'socmint', label: 'SOCMINT', icon: '📱' },
+                { id: 'people', label: 'People Search', icon: '👥' },
+                { id: 'modules', label: 'OSINT Modules', icon: '🧩' },
+                { id: 'cases', label: 'Investigation Cases', icon: '📁' },
+                { id: 'graph', label: 'Link Analysis', icon: '🔗' },
+                { id: 'chat', label: 'AI Assistant', icon: '🤖' }
+              ].map(item => (
+                <button key={item.id}
+                        onClick={() => setActiveTab(item.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm flex items-center space-x-2 transition ${
+                          activeTab === item.id ? 'bg-indigo-100 text-indigo-800 font-medium' : 'text-gray-700 hover:bg-gray-100'
+                        }`}>
+                  <span>{item.icon}</span>
+                  <span>{item.label}</span>
+                </button>
+              ))}
+            </div>
+          </nav>
+
+          {/* Main Content */}
+          <main className="flex-1 overflow-y-auto p-6 bg-gray-50">
+            {activeTab === 'dashboard' && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6 text-gray-800">Dashboard</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="bg-white p-6 rounded-xl shadow-sm border">
+                    <h3 className="text-lg font-semibold mb-2">Active Cases</h3>
+                    <p className="text-3xl font-bold text-indigo-600">{cases.length}</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-xl shadow-sm border">
+                    <h3 className="text-lg font-semibold mb-2">Today's Queries</h3>
+                    <p className="text-3xl font-bold text-green-600">12</p>
+                  </div>
+                  <div className="bg-white p-6 rounded-xl shadow-sm border">
+                    <h3 className="text-lg font-semibold mb-2">Data Sources</h3>
+                    <p className="text-3xl font-bold text-purple-600">8</p>
+                  </div>
+                </div>
+                <div className="mt-8 bg-white p-6 rounded-xl shadow-sm border">
+                  <h3 className="text-lg font-semibold mb-4">Recent Cases</h3>
+                  <div className="overflow-x-auto">
+                    <table className="min-w-full">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-2">Case</th>
+                          <th className="text-left py-2">Status</th>
+                          <th className="text-left py-2">Tags</th>
+                          <th className="text-left py-2">Updated</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {cases.map(c => (
+                          <tr key={c.id} className="border-b hover:bg-gray-50 cursor-pointer" onClick={() => { setCurrentCase(c); setActiveTab('case'); }}>
+                            <td className="py-3">{c.title}</td>
+                            <td><span className={`px-2 py-1 rounded-full text-xs ${c.status === 'Open' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>{c.status}</span></td>
+                            <td>{c.tags.map(t => <span key={t} className="bg-gray-100 text-gray-800 px-2 py-1 rounded-full text-xs mr-1">{t}</span>)}</td>
+                            <td className="text-gray-600">{c.lastUpdated}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'cases' && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">Investigation Cases</h2>
+                  <button onClick={() => setActiveTab('newCase')} className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition">
+                    + New Case
+                  </button>
+                </div>
+                <div className="grid gap-4">
+                  {cases.map(c => (
+                    <div key={c.id} className="bg-white p-5 rounded-xl shadow-sm border cursor-pointer hover:shadow transition"
+                         onClick={() => setCurrentCase(c)}>
+                      <div className="flex justify-between">
+                        <h3 className="font-semibold">{c.title}</h3>
+                        <span className={`px-2 py-1 rounded-full text-xs ${c.status === 'Open' ? 'bg-yellow-100 text-yellow-800' : 'bg-green-100 text-green-800'}`}>
+                          {c.status}
+                        </span>
+                      </div>
+                      <div className="text-sm text-gray-600 mt-1">{c.tags.join(', ')}</div>
+                      <div className="text-xs text-gray-500 mt-2">Updated: {c.lastUpdated}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'newCase' && (
+              <div className="bg-white p-8 rounded-xl shadow-sm max-w-lg mx-auto">
+                <h2 className="text-2xl font-bold mb-6">Create New Investigation</h2>
+                <form onSubmit={(e) => { e.preventDefault(); createCase(e.target.caseTitle.value); }}>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium mb-1">Case Title</label>
+                    <input type="text" name="caseTitle" required
+                           className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"/>
+                  </div>
+                  <div className="flex space-x-3">
+                    <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                      Create Case
+                    </button>
+                    <button type="button" onClick={() => setActiveTab('cases')} className="bg-gray-300 text-gray-800 px-6 py-2 rounded-lg hover:bg-gray-400 transition">
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {activeTab === 'case' && currentCase && (
+              <div>
+                <div className="flex justify-between items-center mb-6">
+                  <h2 className="text-2xl font-bold">{currentCase.title}</h2>
+                  <button onClick={() => setActiveTab('cases')} className="text-indigo-600 hover:underline text-sm">← Back to Cases</button>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-2 space-y-6">
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <h3 className="font-semibold mb-4">Notes & Evidence</h3>
+                      <textarea className="w-full p-3 border border-gray-300 rounded-lg h-32 text-sm" 
+                                placeholder="Add your investigation notes here..."></textarea>
+                      <div className="mt-4 flex space-x-2">
+                        <input type="file" className="text-sm"/>
+                        <button className="bg-green-600 text-white px-4 py-1 rounded text-sm hover:bg-green-700">Upload</button>
+                      </div>
+                    </div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border">
+                      <h3 className="font-semibold mb-4">Findings Timeline</h3>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex">
+                          <div className="w-3 h-3 bg-green-500 rounded-full mt-2 mr-3"></div>
+                          <div>
+                            <strong>10:15 AM</strong> – Email john@email.com found in Adobe 2013 breach
+                          </div>
+                        </div>
+                        <div className="flex">
+                          <div className="w-3 h-3 bg-blue-500 rounded-full mt-2 mr-3"></div>
+                          <div>
+                            <strong>10:30 AM</strong> – LinkedIn profile verified, inconsistent job dates detected
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <div className="bg-white p-6 rounded-xl shadow-sm border h-full">
+                      <h3 className="font-semibold mb-4">Case Details</h3>
+                      <div className="space-y-3 text-sm">
+                        <div><strong>Status:</strong> {currentCase.status}</div>
+                        <div><strong>Tags:</strong> {currentCase.tags.join(', ') || 'None'}</div>
+                        <div><strong>Last Updated:</strong> {currentCase.lastUpdated}</div>
+                        <div><strong>Assigned:</strong> {user.name}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'graph' && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6">Link Analysis</h2>
+                <div className="bg-white p-6 rounded-xl shadow-sm border">
+                  <h3 className="font-semibold mb-4">Entity Relationship Map</h3>
+                  <div id="cy"></div>
+                  <p className="text-sm text-gray-600 mt-4">Nodes: People, Emails, Profiles | Lines: Connections</p>
+                </div>
+              </div>
+            )}
+
+            {['dorking', 'socmint', 'people', 'modules'].includes(activeTab) && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6">
+                  {activeTab === 'dorking' && 'Google/Yandex Dorking'}
+                  {activeTab === 'socmint' && 'SOCMINT – Social Media Intelligence'}
+                  {activeTab === 'people' && 'People Search'}
+                  {activeTab === 'modules' && 'OSINT Modules'}
+                </h2>
+                <div className="bg-white p-6 rounded-xl shadow-sm border">
+                  <p className="text-gray-600 mb-4">Enter target information to begin analysis.</p>
+                  <input type="text" placeholder="Email, name, domain, phone..." 
+                         className="w-full px-4 py-2 border border-gray-300 rounded-lg mb-4"/>
+                  <button className="bg-indigo-600 text-white px-6 py-2 rounded-lg hover:bg-indigo-700 transition">
+                    Run Investigation
+                  </button>
+                </div>
+                <div className="mt-6 bg-white p-6 rounded-xl shadow-sm border">
+                  <h3 className="font-semibold mb-3">Recent Results</h3>
+                  <p className="text-gray-600">No results yet. Run a search above.</p>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'chat' && (
+              <div>
+                <h2 className="text-2xl font-bold mb-6">AI Investigator Assistant</h2>
+                <div className="bg-white rounded-xl shadow-sm border flex flex-col h-96">
+                  <div className="p-4 border-b flex-1 overflow-y-auto">
+                    {chatMessages.map((msg, i) => (
+                      <div key={i} className={`mb-3 ${msg.sender === 'user' ? 'text-right' : 'text-left'}`}>
+                        <div className={`inline-block px-4 py-2 rounded-lg max-w-xs lg:max-w-md ${
+                          msg.sender === 'user' ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-800'
+                        }`}>
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                  <form onSubmit={handleChatSubmit} className="p-4 border-t flex">
+                    <input type="text" value={chatInput} onChange={(e) => setChatInput(e.target.value)}
+                           placeholder="Ask the AI investigator..."
+                           className="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none"/>
+                    <button type="submit" className="bg-indigo-600 text-white px-6 py-2 rounded-r-lg hover:bg-indigo-700 transition">
+                      Send
+                    </button>
+                  </form>
+                </div>
+              </div>
+            )}
+          </main>
+        </div>
+      </div>
+    );
+  };
+
+  ReactDOM.render(<App />, document.getElementById('app'));
+</script>
+
+</body>
+</html>
